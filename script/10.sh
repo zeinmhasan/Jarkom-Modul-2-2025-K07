@@ -72,3 +72,45 @@ curl -s  http://app.k07.com/ | sed -n '1,3p'
 
 curl -sI http://app.k07.com/about | head -n1
 curl -s  http://app.k07.com/about | sed -n '1,2p'
+
+# di vingilot
+# Deteksi versi PHP yang terpasang (mis. 8.2 / 7.4)
+PHPV=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;') || PHPV=$(ls /etc/php/ | sort -V | tail -n1)
+
+# Pastikan pool FPM listen di TCP 127.0.0.1:9000
+FPM_CONF="/etc/php/${PHPV}/fpm/pool.d/www.conf"
+sed -i 's|^listen = .*|listen = 127.0.0.1:9000|' "$FPM_CONF"
+
+# (opsional tapi aman) izinkan koneksi dari Nginx lokal
+if grep -q '^;*listen.allowed_clients' "$FPM_CONF"; then
+  sed -i 's|^;*listen.allowed_clients =.*|listen.allowed_clients = 127.0.0.1|' "$FPM_CONF"
+else
+  echo 'listen.allowed_clients = 127.0.0.1' >> "$FPM_CONF"
+fi
+
+# Restart PHP-FPM dengan service name yang benar
+systemctl restart php${PHPV}-fpm 2>/dev/null || service php${PHPV}-fpm restart
+
+# Test & (re)start nginx
+nginx -t
+rm -f /run/nginx.pid /var/run/nginx.pid 2>/dev/null || true
+nginx 2>/dev/null || true
+nginx -s reload 2>/dev/null || true
+
+# Pastikan dua port ini aktif
+ss -lntp | grep -E '(:80|:9000)'
+
+# Jika masih 502, lihat error log nginx
+tail -n 50 /var/log/nginx/error.log
+
+# di earendil
+# Pastikan DNS ke IP Vingilot
+dig +short app.k07.com
+
+# Uji home & about (tanpa .php)
+curl -sI http://app.k07.com/ | head -n1
+curl -s  http://app.k07.com/ | sed -n '1,3p'
+
+curl -sI http://app.k07.com/about | head -n1
+curl -s  http://app.k07.com/about | sed -n '1,2p'
+
