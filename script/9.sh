@@ -4,16 +4,16 @@ apt-get install -y nginx
 
 # direktori web
 mkdir -p /var/www/static/annals
-echo "Hello from static.zein.com" > /var/www/static/index.html
+echo "Hello from static.k07.com" > /var/www/static/index.html
 
 # contoh isi arsip (biar terlihat di listing)
 echo "chronicle-1" > /var/www/static/annals/1.txt
 echo "chronicle-2" > /var/www/static/annals/2.txt
 
-cat >/etc/nginx/sites-available/static.zein.com <<'EOF'
+cat >/etc/nginx/sites-available/static.k07.com <<'EOF'
 server {
     listen 80;
-    server_name static.zein.com;
+    server_name static.k07.com;
 
     root /var/www/static;
     index index.html;
@@ -43,7 +43,7 @@ server {
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/static.zein.com /etc/nginx/sites-enabled/static.zein.com
+ln -sf /etc/nginx/sites-available/static.k07.com /etc/nginx/sites-enabled/static.k07.com
 ln -sf /etc/nginx/sites-available/000-default-deny /etc/nginx/sites-enabled/000-default-deny
 
 # matikan default bawaan nginx jika ada
@@ -63,7 +63,7 @@ nginx -s reload 2>/dev/null || true
 ps aux | grep '[n]ginx'
 ss -lntp | grep ':80 '
 
-sed -n '1,120p' /etc/nginx/sites-available/static.zein.com
+sed -n '1,120p' /etc/nginx/sites-available/static.k07.com
 
 # di earendil
-dig +short static.zein.com
+dig +short static.k07.com
