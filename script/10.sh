@@ -11,7 +11,7 @@ mkdir -p /var/www/app
 cat >/var/www/app/index.php <<'PHP'
 <?php
 header('Content-Type: text/plain');
-echo "Welcome to app.zein.com (home)\n";
+echo "Welcome to app.k07.com (home)\n";
 echo "Try /about\n";
 ?>
 PHP
@@ -23,7 +23,7 @@ echo "About: This is Vingilot (dynamic PHP)\n";
 ?>
 PHP
 
-cat >/etc/nginx/sites-available/app.zein.com <<'NGINX'
+cat >/etc/nginx/sites-available/app.k07.com <<'NGINX'
 # Tolak akses via IP (default server)
 server {
     listen 80 default_server;
@@ -31,10 +31,10 @@ server {
     return 444;
 }
 
-# Vhost dinamis untuk app.zein.com
+# Vhost dinamis untuk app.k07.com
 server {
     listen 80;
-    server_name app.zein.com;
+    server_name app.k07.com;
 
     root /var/www/app;
     index index.php;
@@ -57,7 +57,7 @@ server {
 }
 NGINX
 
-ln -sf /etc/nginx/sites-available/app.zein.com /etc/nginx/sites-enabled/app.zein.com
+ln -sf /etc/nginx/sites-available/app.k07.com /etc/nginx/sites-enabled/app.k07.com
 rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
 # bersihkan pid kosong, test & reload/start
@@ -67,8 +67,8 @@ nginx 2>/dev/null || true
 nginx -s reload 2>/dev/null || true
 
 # di earendil
-curl -sI http://app.zein.com/ | head -n1
-curl -s  http://app.zein.com/ | sed -n '1,3p'
+curl -sI http://app.k07.com/ | head -n1
+curl -s  http://app.k07.com/ | sed -n '1,3p'
 
-curl -sI http://app.zein.com/about | head -n1
-curl -s  http://app.zein.com/about | sed -n '1,2p'
+curl -sI http://app.k07.com/about | head -n1
+curl -s  http://app.k07.com/about | sed -n '1,2p'
