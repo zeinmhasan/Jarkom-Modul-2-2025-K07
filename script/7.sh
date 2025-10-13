@@ -1,5 +1,5 @@
 # ====== di TIRION (ns1) ======
-DOMAIN="zein.com"
+DOMAIN="k07.com"
 ZONE="/etc/bind/zones/db-$DOMAIN"
 
 # IP sesuai glosarium (ganti jika berbeda)
@@ -33,7 +33,7 @@ rndc notify "$DOMAIN" 2>/dev/null || true
 
 1) Cek resolv.conf urutannya di Cirdan
 cat >/etc/resolv.conf <<'EOF'
-search zein.com
+search k07.com
 nameserver 10.67.3.3
 nameserver 10.67.3.4
 nameserver 192.168.122.1
@@ -43,6 +43,6 @@ chattr +i /etc/resolv.conf 2>/dev/null || true
 Jalankan di keduanya (Earendil & Cirdan):
 
 for h in sirion lindon vingilot www static app; do
-  echo "== $h.zein.com"
-  dig +short "$h.zein.com"
+  echo "== $h.k07.com"
+  dig +short "$h.k07.com"
 done
