@@ -1,5 +1,5 @@
 # ===== di TIRION (ns1) =====
-DOMAIN="zein.com"
+DOMAIN="k07.com"
 REVZONE="3.67.10.in-addr.arpa"
 ZONEFILE="/etc/bind/zones/db-$REVZONE"
 
