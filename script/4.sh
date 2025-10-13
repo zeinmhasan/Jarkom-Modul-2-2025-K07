@@ -6,7 +6,7 @@ mkdir -p /etc/bind/zones /var/cache/bind /run/named
 id bind 2>/dev/null || useradd -r -s /usr/sbin/nologin bind || true
 chown -R bind:bind /etc/bind /var/cache/bind /run/named
 
-DOMAIN="zein.com"     # <== GANTI sesuai soal
+DOMAIN="k07.com"     # <== GANTI sesuai soal
 NS1="10.67.3.3"         # Tirion
 NS2="10.67.3.4"         # Valmar
 APEX="10.67.3.2"        # Sirion
@@ -76,7 +76,7 @@ mkdir -p /var/cache/bind /run/named
 id bind 2>/dev/null || useradd -r -s /usr/sbin/nologin bind || true
 chown -R bind:bind /etc/bind /var/cache/bind /run/named
 
-DOMAIN="zein.com"     # <== GANTI sama persis
+DOMAIN="k07.com"     # <== GANTI sama persis
 NS1="10.67.3.3"
 NS2="10.67.3.4"
 
@@ -106,7 +106,7 @@ named-checkconf
 # setelah hidup, harus otomatis AXFR dan membuat /var/cache/bind/$DOMAIN.slave
 
 Jalankan di Earendil, Elwing, Cirdan, Elrond, Maglor (dan boleh di Sirion juga).
-DOMAIN="zein.com"   # opsional, kalau mau pakai 'search'
+DOMAIN="k07.com"   # opsional, kalau mau pakai 'search'
 
 rm -f /etc/resolv.conf
 cat >/etc/resolv.conf <<EOF
