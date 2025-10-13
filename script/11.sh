@@ -3,7 +3,7 @@ apt-get update
 apt-get install -y nginx
 
 # vhost reverse proxy
-cat >/etc/nginx/sites-available/rp.zein.com <<'EOF'
+cat >/etc/nginx/sites-available/rp.k07.com <<'EOF'
 # Tolak akses via IP (bukan hostname)
 server {
     listen 80 default_server;
@@ -11,10 +11,10 @@ server {
     return 444;
 }
 
-# Reverse proxy utk www.zein.com & sirion.zein.com
+# Reverse proxy utk www.k07.com & sirion.k07.com
 server {
     listen 80;
-    server_name www.zein.com sirion.zein.com;
+    server_name www.k07.com sirion.k07.com;
 
     # root (opsional)
     location = / {
@@ -42,7 +42,7 @@ server {
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/rp.zein.com /etc/nginx/sites-enabled/rp.zein.com
+ln -sf /etc/nginx/sites-available/rp.k07.com /etc/nginx/sites-enabled/rp.k07.com
 rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
 # bersihkan pid kosong, test & (re)start
@@ -52,23 +52,23 @@ nginx 2>/dev/null || true
 nginx -s reload 2>/dev/null || true
 
 # di earendil
-dig +short www.zein.com      # -> 10.67.3.2
-dig +short sirion.zein.com   # -> 10.67.3.2
+dig +short www.k07.com      # -> 10.67.3.2
+dig +short sirion.k07.com   # -> 10.67.3.2
 
 # klien-1
-curl -sI http://www.zein.com/static/ | head -n1        # HTTP/1.1 200 OK
-curl -s  http://www.zein.com/static/annals/ | grep -E '1.txt|2.txt'
+curl -sI http://www.k07.com/static/ | head -n1        # HTTP/1.1 200 OK
+curl -s  http://www.k07.com/static/annals/ | grep -E '1.txt|2.txt'
 
 # klien-2
-curl -sI http://sirion.zein.com/static/ | head -n1
-curl -s  http://sirion.zein.com/static/annals/ | grep -E '1.txt|2.txt'
+curl -sI http://sirion.k07.com/static/ | head -n1
+curl -s  http://sirion.k07.com/static/annals/ | grep -E '1.txt|2.txt'
 
 # klien-1
-curl -sI http://www.zein.com/app/ | head -n1
-curl -s  http://www.zein.com/app/ | sed -n '1,3p'
+curl -sI http://www.k07.com/app/ | head -n1
+curl -s  http://www.k07.com/app/ | sed -n '1,3p'
 
 # klien-2
-curl -sI http://sirion.zein.com/app/ | head -n1
-curl -s  http://sirion.zein.com/app/about | sed -n '1,2p'
+curl -sI http://sirion.k07.com/app/ | head -n1
+curl -s  http://sirion.k07.com/app/about | sed -n '1,2p'
 
 curl -sI http://10.67.3.2/ | head -n1   # bukan 200 (444/404)
