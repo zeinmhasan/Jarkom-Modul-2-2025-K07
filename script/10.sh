@@ -1,12 +1,25 @@
-# (di Vingilot)
+# ===== RUN ON VINGILOT =====
+set -e
+
+DOMAIN="k07.com"
+APP_HOST="app.${DOMAIN}"
+
 apt-get update
 apt-get install -y nginx php-fpm
 
-# ubah pool FPM agar listen di 127.0.0.1:9000 (bukan socket)
-FPM_CONF=$(ls /etc/php/*/fpm/pool.d/www.conf | head -n1)
+# -- Deteksi versi PHP & set PHP-FPM listen di TCP 127.0.0.1:9000 --
+PHPV=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || true)
+[ -z "$PHPV" ] && PHPV=$(ls /etc/php/ | sort -V | tail -n1)
+FPM_CONF="/etc/php/${PHPV}/fpm/pool.d/www.conf"
 sed -i 's|^listen = .*|listen = 127.0.0.1:9000|' "$FPM_CONF"
-systemctl restart php*-fpm 2>/dev/null || service php*-fpm restart 2>/dev/null || true
+if grep -q '^;*listen.allowed_clients' "$FPM_CONF"; then
+  sed -i 's|^;*listen.allowed_clients =.*|listen.allowed_clients = 127.0.0.1|' "$FPM_CONF"
+else
+  echo 'listen.allowed_clients = 127.0.0.1' >> "$FPM_CONF"
+fi
+systemctl restart php${PHPV}-fpm 2>/dev/null || service php${PHPV}-fpm restart
 
+# -- Konten aplikasi --
 mkdir -p /var/www/app
 cat >/var/www/app/index.php <<'PHP'
 <?php
@@ -15,7 +28,6 @@ echo "Welcome to app.k07.com (home)\n";
 echo "Try /about\n";
 ?>
 PHP
-
 cat >/var/www/app/about.php <<'PHP'
 <?php
 header('Content-Type: text/plain');
@@ -23,94 +35,59 @@ echo "About: This is Vingilot (dynamic PHP)\n";
 ?>
 PHP
 
-cat >/etc/nginx/sites-available/app.k07.com <<'NGINX'
-# Tolak akses via IP (default server)
+# -- Vhost Nginx: host-only, rewrite /about tanpa .php --
+cat >/etc/nginx/sites-available/${APP_HOST} <<NGINX
+# Tolak akses via IP
 server {
     listen 80 default_server;
     server_name _;
     return 444;
 }
 
-# Vhost dinamis untuk app.k07.com
+# Aplikasi dinamis di app.k07.com
 server {
     listen 80;
-    server_name app.k07.com;
+    server_name ${APP_HOST};
 
     root /var/www/app;
     index index.php;
 
-    # Pretty URL: coba file/dir, lalu coba "<path>.php", terakhir index.php
+    # Pretty URL: /about -> about.php (tanpa .php)
     location / {
-        try_files $uri $uri/ /$uri.php?$args /index.php?$args;
+        try_files \$uri \$uri/ /\$uri.php?\$args /index.php?\$args;
     }
 
-    # Jalur .php ditangani oleh PHP-FPM (TCP 127.0.0.1:9000)
     location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
+        include snippets/fastcgi-php.conf;  # set SCRIPT_FILENAME, dll.
         fastcgi_pass 127.0.0.1:9000;
     }
 
-    # Keamanan kecil: jangan izinkan akses ke file tersembunyi/konfigurasi
+    # Hardening kecil: blok dotfiles
     location ~ /\.(?!well-known) {
         deny all;
     }
 }
 NGINX
 
-ln -sf /etc/nginx/sites-available/app.k07.com /etc/nginx/sites-enabled/app.k07.com
+ln -sf /etc/nginx/sites-available/${APP_HOST} /etc/nginx/sites-enabled/${APP_HOST}
 rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
-# bersihkan pid kosong, test & reload/start
+# Bersihkan pid usang, test & (re)start nginx
 rm -f /run/nginx.pid /var/run/nginx.pid 2>/dev/null || true
 nginx -t
-nginx 2>/dev/null || true
-nginx -s reload 2>/dev/null || true
+(nginx -s reload 2>/dev/null || nginx)
 
-# di earendil
+echo "Selesai: app siap di http://${APP_HOST}/ dan /about"
+echo "Pastikan DNS: ${APP_HOST} -> IP Vingilot"
+
+
+# di erendil
+dig +short app.k07.com         # -> <IP Vingilot, mis. 10.67.3.6>
 curl -sI http://app.k07.com/ | head -n1
 curl -s  http://app.k07.com/ | sed -n '1,3p'
 
 curl -sI http://app.k07.com/about | head -n1
 curl -s  http://app.k07.com/about | sed -n '1,2p'
 
-# di vingilot
-# Deteksi versi PHP yang terpasang (mis. 8.2 / 7.4)
-PHPV=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;') || PHPV=$(ls /etc/php/ | sort -V | tail -n1)
-
-# Pastikan pool FPM listen di TCP 127.0.0.1:9000
-FPM_CONF="/etc/php/${PHPV}/fpm/pool.d/www.conf"
-sed -i 's|^listen = .*|listen = 127.0.0.1:9000|' "$FPM_CONF"
-
-# (opsional tapi aman) izinkan koneksi dari Nginx lokal
-if grep -q '^;*listen.allowed_clients' "$FPM_CONF"; then
-  sed -i 's|^;*listen.allowed_clients =.*|listen.allowed_clients = 127.0.0.1|' "$FPM_CONF"
-else
-  echo 'listen.allowed_clients = 127.0.0.1' >> "$FPM_CONF"
-fi
-
-# Restart PHP-FPM dengan service name yang benar
-systemctl restart php${PHPV}-fpm 2>/dev/null || service php${PHPV}-fpm restart
-
-# Test & (re)start nginx
-nginx -t
-rm -f /run/nginx.pid /var/run/nginx.pid 2>/dev/null || true
-nginx 2>/dev/null || true
-nginx -s reload 2>/dev/null || true
-
-# Pastikan dua port ini aktif
-ss -lntp | grep -E '(:80|:9000)'
-
-# Jika masih 502, lihat error log nginx
-tail -n 50 /var/log/nginx/error.log
-
-# di earendil
-# Pastikan DNS ke IP Vingilot
-dig +short app.k07.com
-
-# Uji home & about (tanpa .php)
-curl -sI http://app.k07.com/ | head -n1
-curl -s  http://app.k07.com/ | sed -n '1,3p'
-
-curl -sI http://app.k07.com/about | head -n1
-curl -s  http://app.k07.com/about | sed -n '1,2p'
-
+# akses via IP harus ditolak (bukan 200)
+curl -sI http://<IP-Vingilot>/ | head -n1
