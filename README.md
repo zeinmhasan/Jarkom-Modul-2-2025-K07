@@ -169,6 +169,7 @@ Dengan menyambungkan Eonwe ke NAT, maka Eonwe sudah dapat mengakses internet.
 ## Soal 3
 Kabar dari Barat menyapa Timur. Pastikan kelima klien dapat saling berkomunikasi lintas jalur (routing internal via Eonwe berfungsi), lalu pastikan setiap host non-router menambahkan resolver 192.168.122.1 saat interfacenya aktif agar akses paket dari internet tersedia sejak awal.
 
+Dengan konfigurasi yang sudah disampaikan pada #Soal1, maka sudah dipastikan setiap client terhubung satu sama lain.
 
 ## Soal 4
 Para penjaga nama naik ke menara, di Tirion (ns1/master) bangun zona xxxx.com sebagai authoritative dengan SOA yang menunjuk ke ns1.xxxx.com dan catatan NS untuk ns1.xxxx.com dan ns2.xxxx.com. Buat A record untuk ns1.xxxx.com dan ns2.xxxx.com yang mengarah ke alamat Tirion dan Valmar sesuai glosarium, serta A record apex xxxx.com yang mengarah ke alamat Sirion (front door), aktifkan notify dan allow-transfer ke Valmar, set forwarders ke 192.168.122.1. Di Valmar (ns2/slave) tarik zona xxxx.com dari Tirion dan pastikan menjawab authoritative. pada seluruh host non-router ubah urutan resolver menjadi IP dari ns1.xxxx.com → ns2.xxxx.com → 192.168.122.1. Verifikasi query ke apex dan hostname layanan dalam zona dijawab melalui ns1/ns2.
