@@ -12,7 +12,7 @@
   <tbody>
     <tr>
       <td>1</td>
-      <td>Zein muhammad hasan</td>
+      <td>Zein Muhammad Hasan</td>
       <td>5027241035</td>
     </tr>
     <tr>
