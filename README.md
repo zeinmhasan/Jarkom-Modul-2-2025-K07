@@ -43,3 +43,119 @@
 
 
 ## SOAL 1
+Di tepi Beleriand yang porak-poranda, Eonwe merentangkan tiga jalur: Barat untuk Earendil dan Elwing, Timur untuk Círdan, Elrond, Maglor, serta pelabuhan DMZ bagi Sirion, Tirion, Valmar, Lindon, Vingilot. Tetapkan alamat dan default gateway tiap tokoh sesuai glosarium yang sudah diberikan.
+
+#### Eonwe Config
+```
+auto eth0
+iface eth0 inet dhcp
+
+auto eth1
+iface eth1 inet static
+	address 10.67.1.1
+	netmask 255.255.255.0
+
+auto eth2
+iface eth2 inet static
+	address 10.67.2.1
+	netmask 255.255.255.0
+
+auto eth3
+iface eth3 inet static
+	address 10.67.3.1
+	netmask 255.255.255.0
+```
+
+#### Aerendil Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.1.2
+    netmask 255.255.255.0
+    gateway 10.67.1.1
+dns-nameservers 192.168.122.1
+```
+
+#### Elwing Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.1.3
+    netmask 255.255.255.0
+    gateway 10.67.1.1
+```
+
+#### Cirdan Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.2.2
+    netmask 255.255.255.0
+    gateway 10.67.2.1
+```
+
+#### Elrond Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.2.3
+    netmask 255.255.255.0
+    gateway 10.67.2.1
+```
+
+#### Maglor Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.2.4
+    netmask 255.255.255.0
+    gateway 10.67.2.1
+```
+
+#### Sirion Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.3.2
+    netmask 255.255.255.0
+    gateway 10.67.3.1
+```
+
+#### Tirion Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.3.3
+    netmask 255.255.255.0
+    gateway 10.67.3.1
+```
+
+#### Valmar Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.3.4
+    netmask 255.255.255.0
+    gateway 10.67.3.1
+```
+
+#### Lindon Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.3.5
+    netmask 255.255.255.0
+    gateway 10.67.3.1
+```
+
+#### Vingilot Config
+```
+auto eth0
+iface eth0 inet static
+    address 10.67.3.6
+    netmask 255.255.255.0
+    gateway 10.67.3.1
+```
+
+<img width="830" height="605" alt="image" src="https://github.com/user-attachments/assets/a8b8321c-f378-416c-8395-31ada646cb02" />
+
