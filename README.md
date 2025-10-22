@@ -346,6 +346,143 @@ dig ns2.$DOMAIN A +noall +answer
 ## Soal 5
 “Nama memberi arah,” kata Eonwe. Namai semua tokoh (hostname) sesuai glosarium, eonwe, earendil, elwing, cirdan, elrond, maglor, sirion, tirion, valmar, lindon, vingilot, dan verifikasi bahwa setiap host mengenali dan menggunakan hostname tersebut secara system-wide. Buat setiap domain untuk masing masing node sesuai dengan namanya (contoh: eru.xxxx.com) dan assign IP masing-masing juga. Lakukan pengecualian untuk node yang bertanggung jawab atas ns1 dan ns2
 
+### Bagian 1: Tirion
+- Definisikan variabel 'ZONE' agar mudah digunakan, berisi path ke file database (file zona) BIND.
+```
+ZONE=/etc/bind/zones/db-k07.com
+SERIAL=$(date +%Y%m%d)01
+```
+- Buat perintah 'sed' (Stream Editor) untuk mengedit file secara otomatis, agar nomor serial dinaikkan di file zona. Ini adalah sinyal agar server slave (Valmar) tahu ada pembaruan.
+```
+sed -i "s/^[[:space:]]*[0-9]\{10\}[[:space:]]*; Serial.*/        $SERIAL   ; Serial/" "$ZONE"
+```
+- Tambahkan host records.
+```
+cat >>"$ZONE" <<'EOF'
+
+; ==== Host records per node ====
+; Nameserver hosts (sudah ada di file lama, biarkan / perbarui jika perlu)
+; ns1 IN A 10.67.3.3     ; Tirion
+; ns2 IN A 10.67.3.4     ; Valmar
+
+; Apex sudah mengarah ke Sirion (10.67.3.2) via "@ IN A 10.67.3.2"
+; tambahkan juga label host 'sirion' agar konsisten
+sirion      IN A 10.67.3.2
+
+; Barat (LAN-1)
+earendil    IN A 10.67.1.2
+elwing      IN A 10.67.1.3
+
+; Timur (LAN-2)
+cirdan      IN A 10.67.2.2
+elrond      IN A 10.67.2.3
+maglor      IN A 10.67.2.4
+
+; Selatan (LAN-3 selain ns1/ns2/sirion)
+linton      IN A 10.67.3.5
+vingilot   IN A 10.67.3.6
+
+; Pengecualian ns1 & ns2:
+; Tirion dan Valmar bertanggung jawab sbg NS — gunakan nama ns1/ns2.
+; Jika ingin alias nama aslinya tetap dikenal, buat CNAME berikut (opsional)
+tirion      IN CNAME ns1
+valmar      IN CNAME ns2
+
+EOF
+```
+- Periksa sintaks file zona yang baru kita edit untuk error.
+```
+named-checkzone k07.com "$ZONE"
+```
+- Jika ok, reload layanan BIND9 agar membaca perubahan baru.
+```
+kill -HUP $(cat /run/named/named.pid) 2>/dev/null || rndc reload k07.com
+```
+
+### Bagian 2: Valmar
+- Cek dengan perintah verifikasi apakah semua record baru (earendil, elwing, dll) sudah tiba di Valmar.
+```
+dig @10.67.3.4 k07.com AXFR | egrep 'IN[[:space:]]+(A|NS|SOA|CNAME)' | sed -E 's/[[:space:]]+/ /g' | sort
+```
+
+### Bagian 3: Aerendil
+- Atur short hostname
+```
+echo earendil > /etc/hostname
+hostname earendil
+```
+- Tambah hostname ke /etc/hosts.
+```
+grep -q '127.0.1.1 earendil.k07.com earendil' /etc/hosts || \
+echo '127.0.1.1 earendil.k07.com earendil' >> /etc/hosts
+```
+- Pastikan resolv.conf punya search domain.
+```
+grep -q '^search k07.com' /etc/resolv.conf || \
+{ sed -i '1i search k07.com' /etc/resolv.conf 2>/dev/null || true; }
+```
+- Verifikasi dan uji database nama sistem.
+```
+hostname -f     
+getent hosts earendil
+getent hosts earendil.k07.com
+```
+
+### Bagian 4: Tirion & Valmar
+#### Tirion
+- Tambahkan hostname ke /etc/hosts.
+```
+echo ns1 > /etc/hostname
+hostname ns1
+grep -q '127.0.1.1 ns1.k07.com ns1' /etc/hosts || \
+echo '127.0.1.1 ns1.k07.com ns1' >> /etc/hosts
+hostname -f
+```
+
+#### Valmar
+- Tambahkan hostname ke /etc/hosts.
+```
+echo ns2 > /etc/hostname
+hostname ns2
+grep -q '127.0.1.1 ns2.k07.com ns2' /etc/hosts || \
+echo '127.0.1.1 ns2.k07.com ns2' >> /etc/hosts
+hostname -f
+```
+
+### Bagian 6: Aerendil
+- Timpa file /etc/resolv.conf, sesuai dengan urutan relosver yang diminta oleh soal.
+```
+sudo bash -c 'cat > /etc/resolv.conf' <<'EOF'
+search k07.com
+nameserver 10.67.3.3   # ns1 (Tirion)
+nameserver 10.67.3.4   # ns2 (Valmar)
+nameserver 192.168.122.1
+EOF
+```
+- Uji search domain, resolusi FQDN, dan cek manual.
+```
+getent hosts earendil
+getent hosts cirdan
+ping -c1 elrond
+
+dig earendil.k07.com +short
+dig ns1.k07.com +short
+
+cat /etc/resolv.conf
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Soal 6
 Lonceng Valmar berdentang mengikuti irama Tirion. Pastikan zone transfer berjalan, Pastikan Valmar (ns2) telah menerima salinan zona terbaru dari Tirion (ns1). Nilai serial SOA di keduanya harus sama
