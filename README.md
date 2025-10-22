@@ -187,6 +187,132 @@ mkdir -p /etc/bind/zones /var/cache/bind /run/named
 id bind 2>/dev/null || useradd -r -s /usr/sbin/nologin bind || true
 chown -R bind:bind /etc/bind /var/cache/bind /run/named
 ```
+- Definisikan variabel agar skrip lebih mudah dibaca dan diubah.
+```
+DOMAIN="k07.com"
+NS1="10.67.3.3"    # Tirion
+NS2="10.67.3.4"    # Valmar
+APEX="10.67.3.2"   # Sirion
+SERIAL="$(date +%Y%m%d)01"
+```
+- Buat file konfigurasi OPSI GLOBAL untuk BIND.
+```
+cat >/etc/bind/named.conf.options <<EOF
+options {
+    directory "/var/cache/bind";
+    recursion yes;
+    allow-recursion { any; };
+    dnssec-validation no;
+    forwarders { 192.168.122.1; };
+    listen-on { any; };
+    listen-on-v6 { any; };
+};
+EOF
+```
+- Buat file konfigurasi LOKAL untuk BIND, di sinilah kita mendefinisikan ZONA kita.
+```
+cat >/etc/bind/named.conf.local <<EOF
+zone "$DOMAIN" {
+    type master;
+    file "/etc/bind/zones/db-$DOMAIN";
+    notify yes;
+    also-notify { $NS2; };        // Valmar
+    allow-transfer { $NS2; };     // izinkan AXFR ke ns2
+};
+EOF
+```
+- Buat file zona (database DNS).
+```
+cat >/etc/bind/zones/db-$DOMAIN <<EOF
+\$TTL 300
+@   IN SOA  ns1.$DOMAIN. admin.$DOMAIN. (
+        $SERIAL   ; Serial
+        3600      ; Refresh
+        900       ; Retry
+        1209600   ; Expire
+        300 )     ; Minimum
+
+; Authoritative nameservers
+    IN NS   ns1.$DOMAIN.
+    IN NS   ns2.$DOMAIN.
+
+; Host records untuk NS
+ns1 IN A $NS1
+ns2 IN A $NS2
+
+; Apex mengarah ke front door (Sirion)
+@   IN A $APEX
+
+; Contoh tambahan (opsional)
+; www IN CNAME @
+; api IN A $APEX
+EOF
+```
+- Periksa file konfigurasi untuk kesalahan sintaks.
+```
+named-checkconf
+```
+- Periksa file zona untuk memeriksa kesalahan.
+```
+named-checkzone "$DOMAIN" /etc/bind/zones/db-$DOMAIN
+```
+- Jalankan server BIND di background.
+```
+ /usr/sbin/named -4 -u bind -c /etc/bind/named.conf
+```
+
+#### Bagian 2: Valmar - ns2/slave
+- Install paket BIND9 dan alat bantunya
+```
+apt-get update
+apt-get install -y bind9 bind9-utils dnsutils || true
+```
+- Buat direktori yang diperlukan agar BIND bisa berjalan dan mengatur izin agar bisa menulis cache dan log.
+```
+mkdir -p /etc/bind/zones /var/cache/bind /run/named
+id bind 2>/dev/null || useradd -r -s /usr/sbin/nologin bind || true
+chown -R bind:bind /etc/bind /var/cache/bind /run/named
+```
+- Definisikan variabel agar skrip lebih mudah dibaca dan diubah.
+```
+DOMAIN="k07.com"    
+NS1="10.67.3.3"
+NS2="10.67.3.4"
+```
+- Buat file konfigurasi OPSI GLOBAL untuk BIND.
+```
+cat >/etc/bind/named.conf.options <<EOF
+options {
+    directory "/var/cache/bind";
+    recursion yes;
+    allow-recursion { any; };
+    dnssec-validation no;
+    forwarders { 192.168.122.1; };
+    listen-on { any; };
+    listen-on-v6 { any; };
+};
+EOF
+```
+- Buat file konfigurasi LOKAL untuk BIND, di sinilah kita mendefinisikan ZONA kita.
+```
+cat >/etc/bind/named.conf.local <<EOF
+zone "$DOMAIN" {
+    type slave;
+    masters { $NS1; };                    // Tirion
+    file "/var/cache/bind/$DOMAIN.slave";
+    allow-notify { $NS1; };
+};
+EOF
+```
+- Cek konfigurasi dan jalankan service BIND.
+```
+named-checkconf
+ /usr/sbin/named -4 -u bind -c /etc/bind/named.conf
+```
+
+
+
+
 
 
 ## Soal 5
