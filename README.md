@@ -343,6 +343,9 @@ dig ns1.$DOMAIN A +noall +answer
 dig ns2.$DOMAIN A +noall +answer
 ```
 
+![WhatsApp Image 2025-10-22 at 23 47 59_b3a06099](https://github.com/user-attachments/assets/3378efb6-b83c-4436-bd4c-2fcc4578c843)
+
+
 ## Soal 5
 “Nama memberi arah,” kata Eonwe. Namai semua tokoh (hostname) sesuai glosarium, eonwe, earendil, elwing, cirdan, elrond, maglor, sirion, tirion, valmar, lindon, vingilot, dan verifikasi bahwa setiap host mengenali dan menggunakan hostname tersebut secara system-wide. Buat setiap domain untuk masing masing node sesuai dengan namanya (contoh: eru.xxxx.com) dan assign IP masing-masing juga. Lakukan pengecualian untuk node yang bertanggung jawab atas ns1 dan ns2
 
@@ -472,18 +475,6 @@ cat /etc/resolv.conf
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ## Soal 6
 Lonceng Valmar berdentang mengikuti irama Tirion. Pastikan zone transfer berjalan, Pastikan Valmar (ns2) telah menerima salinan zona terbaru dari Tirion (ns1). Nilai serial SOA di keduanya harus sama
 
@@ -516,6 +507,9 @@ dig @127.0.0.1 k07.com AXFR
 # atau
 dig @10.67.3.4 k07.com AXFR
 ```
+
+![WhatsApp Image 2025-10-22 at 23 49 01_58e387dc](https://github.com/user-attachments/assets/745a7a47-77c6-42b0-b13b-4d57b0a35c73)
+
 
 ## Soal 7
 Peta kota dan pelabuhan dilukis. Sirion sebagai gerbang, Lindon sebagai web statis, Vingilot sebagai web dinamis. Tambahkan pada zona xxxx.com A record untuk sirion.xxxx.com (IP Sirion), lindon.xxxx.com (IP Lindon), dan vingilot.xxxx.com (IP Vingilot). Tetapkan CNAME :
@@ -578,6 +572,9 @@ for h in sirion lindon vingilot www static app; do
   dig +short "$h.k07.com"
 done
 ```
+
+![WhatsApp Image 2025-10-22 at 23 49 43_6448f8f7](https://github.com/user-attachments/assets/f3fa4d76-fb25-4137-8551-6f937532bdc3)
+
 
 ## Soal 8
 Setiap jejak harus bisa diikuti. Di Tirion (ns1) deklarasikan satu reverse zone untuk segmen DMZ tempat Sirion, Lindon, Vingilot berada. Di Valmar (ns2) tarik reverse zone tersebut sebagai slave, isi PTR untuk ketiga hostname itu agar pencarian balik IP address mengembalikan hostname yang benar, lalu pastikan query reverse untuk alamat Sirion, Lindon, Vingilot dijawab authoritative.
@@ -664,6 +661,8 @@ for ip in 10.67.3.2 10.67.3.5 10.67.3.6; do
   dig -x "$ip" +short
 done
 ```
+
+
 
 ## Soal 9
 Lampion Lindon dinyalakan. Jalankan web statis pada hostname static.xxxx.com dan buka folder arsip /annals/ dengan autoindex (directory listing) sehingga isinya dapat ditelusuri. Akses harus dilakukan melalui hostname, bukan IP.
@@ -753,6 +752,9 @@ sed -n '1,120p' /etc/nginx/sites-available/static.k07.com
 ```
 dig +short static.k07.com
 ```
+
+![WhatsApp Image 2025-10-22 at 23 46 46_d88d2958](https://github.com/user-attachments/assets/c2c90cfc-a438-4584-8754-68e846e59422)
+
 
 ## Soal 10
 Vingilot mengisahkan cerita dinamis. Jalankan web dinamis (PHP-FPM) pada hostname app.xxxx.com dengan beranda dan halaman about, serta terapkan rewrite sehingga /about berfungsi tanpa akhiran .php. Akses harus dilakukan melalui hostname.
@@ -885,6 +887,9 @@ curl -s  http://app.k07.com/about | sed -n '1,2p'
 ```
 curl -sI http://<IP-Vingilot>/ | head -n1
 ```
+
+![WhatsApp Image 2025-10-22 at 23 45 57_dc2eaae9](https://github.com/user-attachments/assets/5d5e61de-bfc9-4b13-ab2a-7df5d0c5a537)
+
 
 ## Soal 11
 Di muara sungai, Sirion berdiri sebagai reverse proxy. Terapkan path-based routing: /static → Lindon dan /app → Vingilot, sambil meneruskan header Host dan X-Real-IP ke backend. Pastikan Sirion menerima www.xxxx.com (kanonik) dan sirion.xxxx.com, dan bahwa konten pada /static dan /app di-serve melalui backend yang tepat.
@@ -1103,3 +1108,7 @@ curl -s  http://www.k07.com/app/about | sed -n '1,2p'
 ```
 curl -sI http://10.67.3.2/ | head -n1
 ```
+
+![WhatsApp Image 2025-10-22 at 23 44 13_7a74dc21](https://github.com/user-attachments/assets/cb88c1f8-f2a3-4e6a-90d7-441fa5825556)
+
+![WhatsApp Image 2025-10-22 at 23 41 59_c795f875](https://github.com/user-attachments/assets/0725e031-51db-44bf-b443-a31b05a48cd1)
