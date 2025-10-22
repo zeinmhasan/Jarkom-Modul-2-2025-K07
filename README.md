@@ -889,4 +889,217 @@ curl -sI http://<IP-Vingilot>/ | head -n1
 ## Soal 11
 Di muara sungai, Sirion berdiri sebagai reverse proxy. Terapkan path-based routing: /static → Lindon dan /app → Vingilot, sambil meneruskan header Host dan X-Real-IP ke backend. Pastikan Sirion menerima www.xxxx.com (kanonik) dan sirion.xxxx.com, dan bahwa konten pada /static dan /app di-serve melalui backend yang tepat.
 
+### Di Lindon
+- Install Nginx.
+```
+set -e
+apt-get update
+apt-get install -y nginx
+```
+- Siapkan konten statis.
+```
+mkdir -p /var/www/static/annals
+echo "Hello from Lindon (static)" > /var/www/static/index.html
+echo "chronicle-1" > /var/www/static/annals/1.txt
+echo "chronicle-2" > /var/www/static/annals/2.txt
+```
+- Buat file konfigurasi vhost (server block).
+```
+cat >/etc/nginx/sites-available/static.k07.com <<'NGINX'
+server {
+    listen 80;
+    server_name static.k07.com www.k07.com sirion.k07.com;
 
+    root /var/www/static;
+    index index.html;
+
+    # Autoindex khusus untuk /annals/
+    location /annals/ {
+        autoindex on;
+        autoindex_exact_size off;
+        autoindex_localtime on;
+    }
+}
+NGINX
+```
+- Aktivasi vhost dan restart/start Nginx.
+```
+ln -sf /etc/nginx/sites-available/static.k07.com /etc/nginx/sites-enabled/static.k07.com
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+rm -f /run/nginx.pid /var/run/nginx.pid 2>/dev/null || true
+nginx -t
+(nginx -s reload 2>/dev/null || nginx)
+```
+- Cek apakah Nginx Lindon sudah running di port 80.
+```
+ss -lntp | grep ':80 ' || echo "WARNING: nginx belum listen di :80"
+```
+
+### Di Vingilot
+- Install nginx dan php-fpm.
+```
+set -e
+apt-get update
+apt-get install -y nginx php-fpm
+```
+- Konfigurasi php-fpm.
+```
+PHPV=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || true)
+[ -z "$PHPV" ] && PHPV=$(ls /etc/php/ | sort -V | tail -n1)
+FPM_CONF="/etc/php/${PHPV}/fpm/pool.d/www.conf"
+sed -i 's|^listen = .*|listen = 127.0.0.1:9000|' "$FPM_CONF"
+if grep -q '^;*listen.allowed_clients' "$FPM_CONF"; then
+  sed -i 's|^;*listen.allowed_clients =.*|listen.allowed_clients = 127.0.0.1|' "$FPM_CONF"
+else
+  echo 'listen.allowed_clients = 127.0.0.1' >> "$FPM_CONF"
+fi
+systemctl restart php${PHPV}-fpm 2>/dev/null || service php${PHPV}-fpm restart
+```
+- Siapkan konten dinamis, buat 'index.html' dan 'about.php'.
+```
+mkdir -p /var/www/app
+cat >/var/www/app/index.php <<'PHP'
+<?php
+header('Content-Type: text/plain');
+echo "Welcome to app.k07.com (home)\n";
+echo "Try /about\n";
+?>
+PHP
+cat >/var/www/app/about.php <<'PHP'
+<?php
+header('Content-Type: text/plain');
+echo "About: This is Vingilot (dynamic PHP)\n";
+?>
+PHP
+```
+- Buat file konfigurasi vhost.
+```
+cat >/etc/nginx/sites-available/app.k07.com <<'NGINX'
+# Tolak akses via IP (default server)
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+
+# App dinamis (terima juga www/sirion jika diteruskan dari RP)
+server {
+    listen 80;
+    server_name app.k07.com www.k07.com sirion.k07.com;
+
+    root /var/www/app;
+    index index.php;
+
+    # /about -> about.php (tanpa .php)
+    location / {
+        try_files $uri $uri/ /$uri.php?$args /index.php?$args;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+
+    location ~ /\.(?!well-known) { deny all; }
+}
+NGINX
+```
+- Aktivasi vhost dan restart/start nginx.
+```
+ln -sf /etc/nginx/sites-available/app.k07.com /etc/nginx/sites-enabled/app.k07.com
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+rm -f /run/nginx.pid /var/run/nginx.pid 2>/dev/null || true
+
+nginx -t
+(nginx -s reload 2>/dev/null || nginx)
+```
+- Cek port 80 (nginx) dan 9000 (phpm-fpm).
+```
+echo "Listeners:"
+ss -lntp | grep -E '(:80|:9000)' || true
+```
+
+# Di Sirion
+- Install nginx.
+```
+set -e
+apt-get update
+apt-get install -y nginx
+```
+- Konfigurasi variabel.
+```
+DOMAIN="k07.com"
+LINDON_IP="10.67.3.5"
+VINGILOT_IP="10.67.3.6"
+```
+- Buat file konfigurasi vhost untuk Reverse Proxy.
+```
+cat >/etc/nginx/sites-available/rp.${DOMAIN} <<EOF
+# Tolak akses via IP
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+
+# Reverse proxy utk www.${DOMAIN} & sirion.${DOMAIN}
+server {
+    listen 80;
+    server_name www.${DOMAIN} sirion.${DOMAIN};
+
+    # Health text
+    location = / {
+        return 200 "Sirion reverse proxy OK\\n";
+        add_header Content-Type text/plain;
+    }
+
+    # /static -> Lindon (hapus prefix /static/)
+    location /static/ {
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_http_version 1.1;
+        proxy_pass http://${LINDON_IP}/;
+    }
+
+    # /app -> Vingilot (hapus prefix /app/)
+    location /app/ {
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_http_version 1.1;
+        proxy_pass http://${VINGILOT_IP}/;
+    }
+}
+EOF
+```
+- Aktivasi dan restart/start ngin.
+```
+ln -sf /etc/nginx/sites-available/rp.${DOMAIN} /etc/nginx/sites-enabled/rp.${DOMAIN}
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+rm -f /run/nginx.pid /var/run/nginx.pid 2>/dev/null || true
+
+nginx -t
+(nginx -s reload 2>/dev/null || nginx)
+```
+
+### Di Aerendil
+- Verifikasi DNS: Pastikan 'www' dan 'sirion' mengarah ke ip sirion.
+```
+dig +short www.k07.com      # -> 10.67.3.2 (Sirion)
+dig +short sirion.k07.com   # -> 10.67.3.2 (Sirion)
+```
+- Verifikasi /static via Sirion → Lindon
+```
+curl -sI http://www.k07.com/static/ | head -n1   # harus 200 ok
+curl -s  http://www.k07.com/static/annals/ | grep -E '1.txt|2.txt'
+```
+- Verifikasi /app via Sirion → Vingilot
+```
+curl -sI http://www.k07.com/app/ | head -n1
+curl -s  http://www.k07.com/app/about | sed -n '1,2p'
+```
+- Akses IP Sirion harus bukan 200 (host-only)
+```
+curl -sI http://10.67.3.2/ | head -n1
+```
