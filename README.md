@@ -175,7 +175,7 @@ Dengan konfigurasi yang sudah disampaikan pada #Soal1, maka sudah dipastikan set
 Para penjaga nama naik ke menara, di Tirion (ns1/master) bangun zona xxxx.com sebagai authoritative dengan SOA yang menunjuk ke ns1.xxxx.com dan catatan NS untuk ns1.xxxx.com dan ns2.xxxx.com. Buat A record untuk ns1.xxxx.com dan ns2.xxxx.com yang mengarah ke alamat Tirion dan Valmar sesuai glosarium, serta A record apex xxxx.com yang mengarah ke alamat Sirion (front door), aktifkan notify dan allow-transfer ke Valmar, set forwarders ke 192.168.122.1. Di Valmar (ns2/slave) tarik zona xxxx.com dari Tirion dan pastikan menjawab authoritative. pada seluruh host non-router ubah urutan resolver menjadi IP dari ns1.xxxx.com → ns2.xxxx.com → 192.168.122.1. Verifikasi query ke apex dan hostname layanan dalam zona dijawab melalui ns1/ns2.
 
 
-#### Bagian 1: Tirion - ns1/master
+### Bagian 1: Tirion - ns1/master
 - Install paket BIND9 dan alat bantunya
 ```
 apt-get update
@@ -261,7 +261,7 @@ named-checkzone "$DOMAIN" /etc/bind/zones/db-$DOMAIN
  /usr/sbin/named -4 -u bind -c /etc/bind/named.conf
 ```
 
-#### Bagian 2: Valmar - ns2/slave
+### Bagian 2: Valmar - ns2/slave
 - Install paket BIND9 dan alat bantunya
 ```
 apt-get update
@@ -310,10 +310,38 @@ named-checkconf
  /usr/sbin/named -4 -u bind -c /etc/bind/named.conf
 ```
 
-
-
-
-
+### Bagian 3: Konfigurasi Klien - Semua Host Lain
+- Hapus file resolv.conf lama dan buat file resolve.conf yang baru.
+```
+rm -f /etc/resolv.conf
+cat >/etc/resolv.conf <<EOF
+nameserver 10.67.3.3   # ns1 (Tirion)
+nameserver 10.67.3.4   # ns2 (Valmar)
+nameserver 192.168.122.1
+# search $DOMAIN
+EOF
+```
+- Cek apakah Tirion dan Valmar merespon dengan 'Authoritative Answer'.
+```
+dig @10.67.3.3 $DOMAIN A +norecurse +noall +answer +authority +comments
+dig @10.67.3.4 $DOMAIN A +norecurse +noall +answer +authority +comments
+```
+- Cek apakah Tirion tahu siapa NS dan apa IP mereka.
+```
+dig @10.67.3.3 $DOMAIN NS +norecurse +noall +answer
+dig @10.67.3.3 ns1.$DOMAIN A +noall +answer
+dig @10.67.3.3 ns2.$DOMAIN A +noall +answer
+```
+- Tes permintaan 'Full Zone Transfer' (AXFR) dari Valmar.
+```
+dig @10.67.3.4 $DOMAIN AXFR
+```
+- Uji apakah file /etc/resolv.conf berfungsi dengan benar.
+```
+dig $DOMAIN A +noall +answer
+dig ns1.$DOMAIN A +noall +answer
+dig ns2.$DOMAIN A +noall +answer
+```
 
 ## Soal 5
 “Nama memberi arah,” kata Eonwe. Namai semua tokoh (hostname) sesuai glosarium, eonwe, earendil, elwing, cirdan, elrond, maglor, sirion, tirion, valmar, lindon, vingilot, dan verifikasi bahwa setiap host mengenali dan menggunakan hostname tersebut secara system-wide. Buat setiap domain untuk masing masing node sesuai dengan namanya (contoh: eru.xxxx.com) dan assign IP masing-masing juga. Lakukan pengecualian untuk node yang bertanggung jawab atas ns1 dan ns2
