@@ -757,6 +757,134 @@ dig +short static.k07.com
 ## Soal 10
 Vingilot mengisahkan cerita dinamis. Jalankan web dinamis (PHP-FPM) pada hostname app.xxxx.com dengan beranda dan halaman about, serta terapkan rewrite sehingga /about berfungsi tanpa akhiran .php. Akses harus dilakukan melalui hostname.
 
+### Di Vingilot
+- Buat variiabel.
+```
+DOMAIN="k07.com"
+APP_HOST="app.${DOMAIN}"
+```
+- Install nginx danphp-fpm
+```
+apt-get update
+apt-get install -y nginx php-fpm
+```
+- Deteksi versi PHP, set PHP-FPM listen di TCP 127.0.0.1:9000, dan restart layanan php-fpm.
+```
+PHPV=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || true)
+[ -z "$PHPV" ] && PHPV=$(ls /etc/php/ | sort -V | tail -n1)
+FPM_CONF="/etc/php/${PHPV}/fpm/pool.d/www.conf"
+
+sed -i 's|^listen = .*|listen = 127.0.0.1:9000|' "$FPM_CONF"
+
+if grep -q '^;*listen.allowed_clients' "$FPM_CONF"; then
+  sed -i 's|^;*listen.allowed_clients =.*|listen.allowed_clients = 127.0.0.1|' "$FPM_CONF"
+else
+  echo 'listen.allowed_clients = 127.0.0.1' >> "$FPM_CONF"
+fi
+
+systemctl restart php${PHPV}-fpm 2>/dev/null || service php${PHPV}-fpm restart
+```
+- Buat direktori web root.
+```
+mkdir -p /var/www/app
+```
+- Buat file 'index.html'.
+```
+cat >/var/www/app/index.php <<'PHP'
+<?php
+header('Content-Type: text/plain');
+echo "Welcome to app.k07.com (home)\n";
+echo "Try /about\n";
+?>
+PHP
+```
+- Buat file 'about.php'.
+```
+cat >/var/www/app/about.php <<'PHP'
+<?php
+header('Content-Type: text/plain');
+echo "About: This is Vingilot (dynamic PHP)\n";
+?>
+PHP
+```
+- Buat file konfigurasi 'server block' (vhost) baru.
+```
+cat >/etc/nginx/sites-available/${APP_HOST} <<NGINX
+# Tolak akses via IP
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+
+# Aplikasi dinamis di app.k07.com
+server {
+    listen 80;
+    server_name ${APP_HOST};
+
+    root /var/www/app;
+    index index.php;
+
+    # Pretty URL: /about -> about.php (tanpa .php)
+    location / {
+        try_files \$uri \$uri/ /\$uri.php?\$args /index.php?\$args;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;  # set SCRIPT_FILENAME, dll.
+        fastcgi_pass 127.0.0.1:9000;
+    }
+
+    # Hardening kecil: blok dotfiles
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+}
+NGINX
+```
+- Aktifkan 'vhost' baru dengan membuat symbolic link.
+```
+ln -sf /etc/nginx/sites-available/${APP_HOST} /etc/nginx/sites-enabled/${APP_HOST}
+```
+- Hapus 'vhost' default Nginx.
+```
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+```
+- Bersihkan file PID lama.
+```
+rm -f /run/nginx.pid /var/run/nginx.pid 2>/dev/null || true
+```
+- Cek sintaks konfigurasi.
+```
+nginx -t
+```
+- Reload (jika sudah jalan) atau start (jika belum jalan).
+```
+(nginx -s reload 2>/dev/null || nginx)
+
+echo "Selesai: app siap di http://${APP_HOST}/ dan /about"
+echo "Pastikan DNS: ${APP_HOST} -> IP Vingilot"
+```
+
+### Di Aerendil atau Cirdan
+- Tes 1: Cek DNS.
+```
+dig +short app.k07.com
+```
+- Tes 2: Cek Beranda (/).
+```
+curl -sI http://app.k07.com/ | head -n1
+curl -s  http://app.k07.com/ | sed -n '1,3p'
+```
+- Tes 3: Cek /about (tanpa .php).
+```
+curl -sI http://app.k07.com/about | head -n1
+curl -s  http://app.k07.com/about | sed -n '1,2p'
+```
+- Tes 4: Cek penolakan IP (Akses via IP harus GAGAL).
+```
+curl -sI http://<IP-Vingilot>/ | head -n1
+```
 
 ## Soal 11
 Di muara sungai, Sirion berdiri sebagai reverse proxy. Terapkan path-based routing: /static → Lindon dan /app → Vingilot, sambil meneruskan header Host dan X-Real-IP ke backend. Pastikan Sirion menerima www.xxxx.com (kanonik) dan sirion.xxxx.com, dan bahwa konten pada /static dan /app di-serve melalui backend yang tepat.
