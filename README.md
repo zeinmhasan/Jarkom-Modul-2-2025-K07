@@ -175,6 +175,20 @@ Dengan konfigurasi yang sudah disampaikan pada #Soal1, maka sudah dipastikan set
 Para penjaga nama naik ke menara, di Tirion (ns1/master) bangun zona xxxx.com sebagai authoritative dengan SOA yang menunjuk ke ns1.xxxx.com dan catatan NS untuk ns1.xxxx.com dan ns2.xxxx.com. Buat A record untuk ns1.xxxx.com dan ns2.xxxx.com yang mengarah ke alamat Tirion dan Valmar sesuai glosarium, serta A record apex xxxx.com yang mengarah ke alamat Sirion (front door), aktifkan notify dan allow-transfer ke Valmar, set forwarders ke 192.168.122.1. Di Valmar (ns2/slave) tarik zona xxxx.com dari Tirion dan pastikan menjawab authoritative. pada seluruh host non-router ubah urutan resolver menjadi IP dari ns1.xxxx.com → ns2.xxxx.com → 192.168.122.1. Verifikasi query ke apex dan hostname layanan dalam zona dijawab melalui ns1/ns2.
 
 
+#### Bagian 1: Tirion - ns1/master
+- Install paket BIND9 dan alat bantunya
+```
+apt-get update
+apt-get install -y bind9 bind9-utils dnsutils || true
+```
+- Buat direktori yang diperlukan agar BIND bisa berjalan dan mengatur izin agar bisa menulis cache dan log.
+```
+mkdir -p /etc/bind/zones /var/cache/bind /run/named
+id bind 2>/dev/null || useradd -r -s /usr/sbin/nologin bind || true
+chown -R bind:bind /etc/bind /var/cache/bind /run/named
+```
+
+
 ## Soal 5
 “Nama memberi arah,” kata Eonwe. Namai semua tokoh (hostname) sesuai glosarium, eonwe, earendil, elwing, cirdan, elrond, maglor, sirion, tirion, valmar, lindon, vingilot, dan verifikasi bahwa setiap host mengenali dan menggunakan hostname tersebut secara system-wide. Buat setiap domain untuk masing masing node sesuai dengan namanya (contoh: eru.xxxx.com) dan assign IP masing-masing juga. Lakukan pengecualian untuk node yang bertanggung jawab atas ns1 dan ns2
 
