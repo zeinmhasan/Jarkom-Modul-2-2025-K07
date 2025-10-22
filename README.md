@@ -487,6 +487,35 @@ cat /etc/resolv.conf
 ## Soal 6
 Lonceng Valmar berdentang mengikuti irama Tirion. Pastikan zone transfer berjalan, Pastikan Valmar (ns2) telah menerima salinan zona terbaru dari Tirion (ns1). Nilai serial SOA di keduanya harus sama
 
+Di Valmar:
+- Ambil serial dari ns1 dan ns2
+```
+dig @10.67.3.3 k07.com SOA +noall +answer | awk '{print $7}'
+dig @10.67.3.4 k07.com SOA +noall +answer | awk '{print $7}'
+```
+- Konfigurasi slave, pastikan allow transfer.
+```
+nano /etc/bind/named.conf.local
+zone "k07.com" {
+    type slave;
+    masters { 10.67.3.3; };                 // Tirion (ns1)
+    file "/var/cache/bind/k07.com.slave";
+    allow-notify { 10.67.3.3; };
+    allow-transfer { 127.0.0.1; 10.67.3.0/24; };  // IZINKAN AXFR (lab)
+};
+```
+- Cek sintaks konfigurasi BIND dan reload service BIND.
+```
+named-checkconf
+kill -HUP $(cat /run/named/named.pid) 2>/dev/null || \
+{ pkill named; /usr/sbin/named -4 -u bind -c /etc/bind/named.conf; }
+```
+- Verifikasi zone transfer (AXFR).
+```
+dig @127.0.0.1 k07.com AXFR
+# atau
+dig @10.67.3.4 k07.com AXFR
+```
 
 ## Soal 7
 Peta kota dan pelabuhan dilukis. Sirion sebagai gerbang, Lindon sebagai web statis, Vingilot sebagai web dinamis. Tambahkan pada zona xxxx.com A record untuk sirion.xxxx.com (IP Sirion), lindon.xxxx.com (IP Lindon), dan vingilot.xxxx.com (IP Vingilot). Tetapkan CNAME :
@@ -496,13 +525,234 @@ Peta kota dan pelabuhan dilukis. Sirion sebagai gerbang, Lindon sebagai web stat
 
 Verifikasi dari dua klien berbeda bahwa seluruh hostname tersebut ter-resolve ke tujuan yang benar dan konsisten.
 
+### Di Tirion:
+- Tetapkan variabel.
+```
+DOMAIN="k07.com"
+ZONE="/etc/bind/zones/db-$DOMAIN"
+
+SIRION_IP="10.67.3.2"
+LINDON_IP="10.67.3.5" 
+VINGILOT_IP="10.67.3.6" 
+```
+- Naikkan serial SOA.
+```
+SERIAL="$(date +%Y%m%d)01"
+sed -i "0,/; Serial/{s/^[[:space:]]*[0-9]\{10\}[[:space:]]*; Serial.*/        $SERIAL   ; Serial/}" "$ZONE"
+```
+- Tambahkan/refresh blok host dan CNAME.
+```
+cat >>"$ZONE" <<EOF
+
+; ==== Web front/backends ====
+sirion      IN A $SIRION_IP
+lindon      IN A $LINDON_IP
+vingilot    IN A $VINGILOT_IP
+
+; ==== Aliases ====
+www         IN CNAME sirion.$DOMAIN.
+static      IN CNAME lindon.$DOMAIN.
+app         IN CNAME vingilot.$DOMAIN.
+EOF
+```
+- Validasi dan reload.
+```
+named-checkzone "$DOMAIN" "$ZONE"
+kill -HUP "$(cat /run/named/named.pid)" 2>/dev/null || true
+```
+
+### Di Cirdan dan Aerendil
+- Pastikan /etc/resolv.conf klien sudah benar.
+```
+cat >/etc/resolv.conf <<'EOF'
+search k07.com
+nameserver 10.67.3.3
+nameserver 10.67.3.4
+nameserver 192.168.122.1
+EOF
+```
+- Verifikasi host.
+```
+for h in sirion lindon vingilot www static app; do
+  echo "== $h.k07.com"
+  dig +short "$h.k07.com"
+done
+```
+
 ## Soal 8
 Setiap jejak harus bisa diikuti. Di Tirion (ns1) deklarasikan satu reverse zone untuk segmen DMZ tempat Sirion, Lindon, Vingilot berada. Di Valmar (ns2) tarik reverse zone tersebut sebagai slave, isi PTR untuk ketiga hostname itu agar pencarian balik IP address mengembalikan hostname yang benar, lalu pastikan query reverse untuk alamat Sirion, Lindon, Vingilot dijawab authoritative.
 
+### Bagian 1: Tirion
+- Tetapkan variabel untuk domain dan file zona.
+```
+DOMAIN="k07.com"
+REVZONE="3.67.10.in-addr.arpa"
+ZONEFILE="/etc/bind/zones/db-$REVZONE"
+```
+- Pastikan direktori sudah ada.
+```
+mkdir -p /etc/bind/zones
+```
+- Tambah deklarasi zona reverse (master) dengan notify & transfer ke ns2.
+```
+cat >> /etc/bind/named.conf.local <<EOF
+
+zone "$REVZONE" {
+    type master;
+    file "$ZONEFILE";
+    notify yes;
+    also-notify { 10.67.3.4; };    // ns2 (Valmar)
+    allow-transfer { 10.67.3.4; }; // izinkan AXFR ke ns2
+};
+EOF
+```
+- Buat file zona reverse dengan PTR untuk DMZ hosts
+```
+SERIAL="$(date +%Y%m%d)01"
+cat > "$ZONEFILE" <<EOF
+\$TTL 300
+@   IN SOA  ns1.$DOMAIN. admin.$DOMAIN. (
+        $SERIAL   ; Serial
+        3600      ; Refresh
+        900       ; Retry
+        1209600   ; Expire
+        300 )     ; Minimum
+
+    IN NS  ns1.$DOMAIN.
+    IN NS  ns2.$DOMAIN.
+
+; Host octet -> PTR
+2   IN PTR sirion.$DOMAIN.
+5   IN PTR lindon.$DOMAIN.
+6   IN PTR vingilot.$DOMAIN.
+EOF
+```
+- Validasi & muat ulang BIND.
+```
+named-checkzone "$REVZONE" "$ZONEFILE"
+kill -HUP "$(cat /run/named/named.pid)" 2>/dev/null || true
+```
+
+### Di Valmar
+- Deklarasi zona slave.
+```
+REVZONE="3.67.10.in-addr.arpa"
+cat >> /etc/bind/named.conf.local <<EOF
+
+zone "$REVZONE" {
+    type slave;
+    masters { 10.67.3.3; };                 // ns1 (Tirion)
+    file "/var/cache/bind/$REVZONE.slave";
+    allow-notify { 10.67.3.3; };
+    // (opsional lab) allow-transfer { 127.0.0.1; 10.67.3.0/24; };
+};
+EOF
+```
+- Cek sintaks konfigurasi dan reload BIND.
+```
+named-checkconf
+# reload/ start named
+kill -HUP "$(cat /run/named/named.pid)" 2>/dev/null || \
+{ pkill named 2>/dev/null; /usr/sbin/named -4 -u bind -c /etc/bind/named.conf; }
+```
+
+### Di Cirdan dan Aerendil
+- Verifikasi host.
+```
+for ip in 10.67.3.2 10.67.3.5 10.67.3.6; do
+  echo "== -x $ip"
+  dig -x "$ip" +short
+done
+```
 
 ## Soal 9
 Lampion Lindon dinyalakan. Jalankan web statis pada hostname static.xxxx.com dan buka folder arsip /annals/ dengan autoindex (directory listing) sehingga isinya dapat ditelusuri. Akses harus dilakukan melalui hostname, bukan IP.
 
+### Di Lindon
+- Perbarui daftar paket, lalu install Nginx
+```
+apt-get update
+apt-get install -y nginx
+```
+- Buat direktori web dan file index.html sebagai halaman utama.
+```
+mkdir -p /var/www/static/annals
+echo "Hello from static.k07.com" > /var/www/static/index.html
+```
+- Buat file-file dummy di dalam /annals/ agar ada sesuatu yang bisa ditampilkan oleh autoindex.
+```
+echo "chronicle-1" > /var/www/static/annals/1.txt
+echo "chronicle-2" > /var/www/static/annals/2.txt
+```
+- Buat file konfiigurasi server block baru.
+```
+cat >/etc/nginx/sites-available/static.k07.com <<'EOF'
+server {
+    listen 80;
+    server_name static.k07.com;
+
+    root /var/www/static;
+    index index.html;
+
+    # Autoindex untuk folder /annals/
+    location /annals/ {
+        autoindex on;
+        autoindex_exact_size off;
+        autoindex_localtime on;
+    }
+
+    # (opsional) cegah directory listing selain di /annals/
+    location / {
+        # index sudah ada; jika tidak ada index, tetap 403 (tanpa autoindex)
+    }
+}
+EOF
+```
+- Buat file konfigurasi 'default' yang akan menangkap semua request yang tidak cocok dengan 'server_name'.
+```
+cat >/etc/nginx/sites-available/000-default-deny <<'EOF'
+server {
+    listen 80 default_server;
+    server_name _;
+
+    # drop cepat; bisa juga return 404 kalau kamu mau
+    return 444;
+}
+EOF
+```
+- Aktifkan konfigurasi dengan membuat 'symbolic link' (shortcut) dari 'sites-available' ke 'sites-enabled'.
+```
+ln -sf /etc/nginx/sites-available/static.k07.com /etc/nginx/sites-enabled/static.k07.com
+ln -sf /etc/nginx/sites-available/000-default-deny /etc/nginx/sites-enabled/000-default-deny
+```
+- Hapus file konfigurasi default Nginx agar tidak bentrok, kemudian reload.
+```
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+nginx -t && nginx -s reload || systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null
+```
+- Bersihkan pidfile kosong & start fresh.
+```
+rm -f /run/nginx.pid /var/run/nginx.pid 2>/dev/null || true
+nginx -t
+nginx
+```
+- Kalau mau paksa reload setelahj perubahan
+```
+nginx -s reload 2>/dev/null || true
+```
+- Verifikasi proses & port
+```
+ps aux | grep '[n]ginx'
+ss -lntp | grep ':80 '
+
+sed -n '1,120p' /etc/nginx/sites-available/static.k07.com
+```
+
+### Di Aerendil atau Cirdan
+- Pastikan bahwa 'static.k07.com' bisa di-resolve ke IP Lindon oleh server DNS (Tirion).
+```
+dig +short static.k07.com
+```
 
 ## Soal 10
 Vingilot mengisahkan cerita dinamis. Jalankan web dinamis (PHP-FPM) pada hostname app.xxxx.com dengan beranda dan halaman about, serta terapkan rewrite sehingga /about berfungsi tanpa akhiran .php. Akses harus dilakukan melalui hostname.
