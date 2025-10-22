@@ -343,8 +343,7 @@ dig ns1.$DOMAIN A +noall +answer
 dig ns2.$DOMAIN A +noall +answer
 ```
 
-![WhatsApp Image 2025-10-22 at 23 47 59_b3a06099](https://github.com/user-attachments/assets/3378efb6-b83c-4436-bd4c-2fcc4578c843)
-
+<img width="598" height="422" alt="image" src="https://github.com/user-attachments/assets/66148a61-43d9-4ba9-bba5-3d940192a45d" />
 
 ## Soal 5
 “Nama memberi arah,” kata Eonwe. Namai semua tokoh (hostname) sesuai glosarium, eonwe, earendil, elwing, cirdan, elrond, maglor, sirion, tirion, valmar, lindon, vingilot, dan verifikasi bahwa setiap host mengenali dan menggunakan hostname tersebut secara system-wide. Buat setiap domain untuk masing masing node sesuai dengan namanya (contoh: eru.xxxx.com) dan assign IP masing-masing juga. Lakukan pengecualian untuk node yang bertanggung jawab atas ns1 dan ns2
@@ -474,6 +473,7 @@ dig ns1.k07.com +short
 cat /etc/resolv.conf
 ```
 
+<img width="383" height="222" alt="image" src="https://github.com/user-attachments/assets/cfaa5d95-8c04-453a-948a-2f4a25620292" />
 
 ## Soal 6
 Lonceng Valmar berdentang mengikuti irama Tirion. Pastikan zone transfer berjalan, Pastikan Valmar (ns2) telah menerima salinan zona terbaru dari Tirion (ns1). Nilai serial SOA di keduanya harus sama
@@ -509,6 +509,7 @@ dig @10.67.3.4 k07.com AXFR
 ```
 
 ![WhatsApp Image 2025-10-22 at 23 49 01_58e387dc](https://github.com/user-attachments/assets/745a7a47-77c6-42b0-b13b-4d57b0a35c73)
+<img width="645" height="334" alt="image" src="https://github.com/user-attachments/assets/3673d88d-5258-496d-8924-4851b6616f2f" />
 
 
 ## Soal 7
@@ -573,8 +574,7 @@ for h in sirion lindon vingilot www static app; do
 done
 ```
 
-![WhatsApp Image 2025-10-22 at 23 49 43_6448f8f7](https://github.com/user-attachments/assets/f3fa4d76-fb25-4137-8551-6f937532bdc3)
-
+<img width="436" height="206" alt="image" src="https://github.com/user-attachments/assets/a840d135-6407-4619-8605-0bdcb525dcff" />
 
 ## Soal 8
 Setiap jejak harus bisa diikuti. Di Tirion (ns1) deklarasikan satu reverse zone untuk segmen DMZ tempat Sirion, Lindon, Vingilot berada. Di Valmar (ns2) tarik reverse zone tersebut sebagai slave, isi PTR untuk ketiga hostname itu agar pencarian balik IP address mengembalikan hostname yang benar, lalu pastikan query reverse untuk alamat Sirion, Lindon, Vingilot dijawab authoritative.
@@ -662,7 +662,8 @@ for ip in 10.67.3.2 10.67.3.5 10.67.3.6; do
 done
 ```
 
-
+<img width="320" height="111" alt="image" src="https://github.com/user-attachments/assets/1cba15e6-4ad4-4fbf-8e5e-a69c7cab050d" />
+<img width="308" height="116" alt="image" src="https://github.com/user-attachments/assets/6692d6de-a4f2-4b55-a933-a2d7fbefa713" />
 
 ## Soal 9
 Lampion Lindon dinyalakan. Jalankan web statis pada hostname static.xxxx.com dan buka folder arsip /annals/ dengan autoindex (directory listing) sehingga isinya dapat ditelusuri. Akses harus dilakukan melalui hostname, bukan IP.
@@ -753,7 +754,9 @@ sed -n '1,120p' /etc/nginx/sites-available/static.k07.com
 dig +short static.k07.com
 ```
 
-![WhatsApp Image 2025-10-22 at 23 46 46_d88d2958](https://github.com/user-attachments/assets/c2c90cfc-a438-4584-8754-68e846e59422)
+<img width="541" height="204" alt="image" src="https://github.com/user-attachments/assets/24a678b3-44cb-4227-9dda-a89c1fac65e7" />
+<img width="249" height="41" alt="image" src="https://github.com/user-attachments/assets/98abc36f-1fc8-4294-888c-308ab29595fa" />
+
 
 
 ## Soal 10
