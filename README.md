@@ -755,9 +755,8 @@ dig +short static.k07.com
 ```
 
 <img width="541" height="204" alt="image" src="https://github.com/user-attachments/assets/24a678b3-44cb-4227-9dda-a89c1fac65e7" />
+
 <img width="249" height="41" alt="image" src="https://github.com/user-attachments/assets/98abc36f-1fc8-4294-888c-308ab29595fa" />
-
-
 
 ## Soal 10
 Vingilot mengisahkan cerita dinamis. Jalankan web dinamis (PHP-FPM) pada hostname app.xxxx.com dengan beranda dan halaman about, serta terapkan rewrite sehingga /about berfungsi tanpa akhiran .php. Akses harus dilakukan melalui hostname.
@@ -892,7 +891,6 @@ curl -sI http://<IP-Vingilot>/ | head -n1
 ```
 
 ![WhatsApp Image 2025-10-22 at 23 45 57_dc2eaae9](https://github.com/user-attachments/assets/5d5e61de-bfc9-4b13-ab2a-7df5d0c5a537)
-
 
 ## Soal 11
 Di muara sungai, Sirion berdiri sebagai reverse proxy. Terapkan path-based routing: /static → Lindon dan /app → Vingilot, sambil meneruskan header Host dan X-Real-IP ke backend. Pastikan Sirion menerima www.xxxx.com (kanonik) dan sirion.xxxx.com, dan bahwa konten pada /static dan /app di-serve melalui backend yang tepat.
